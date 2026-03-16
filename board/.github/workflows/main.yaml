@@ -23,7 +23,11 @@ jobs:
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
-        java-version: '11'
+        java-version: '17'
+
+    - name: Build with Maven
+      working-directory: backend
+      run: mvn clean verify -DskipTests
 
     - name: Give permission to mvnw
       run: chmod +x mvnw
