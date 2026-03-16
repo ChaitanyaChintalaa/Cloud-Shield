@@ -18,41 +18,34 @@ jobs:
 
     steps:
 
-    # -----------------------------
-    # Checkout Code
-    # -----------------------------
-    - name: Checkout repository
+    # Checkout Repository
+    - name: Checkout code
       uses: actions/checkout@v5
 
-    # -----------------------------
     # Setup Java
-    # -----------------------------
     - name: Setup Java
       uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: 17
 
-    # -----------------------------
     # Build Maven Project
-    # -----------------------------
     - name: Build Application
       working-directory: board
-      run: ./mvnw clean package -DskipTests
+      run: |
+        chmod +x mvnw
+        ./mvnw clean package -DskipTests
 
-    # -----------------------------
-    # SonarQube Code Scan
-    # -----------------------------
+    # SonarQube Scan
     - name: SonarQube Scan
-      working-directory: board
       uses: sonarsource/sonarqube-scan-action@v2
+      with:
+        projectBaseDir: board
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-    # -----------------------------
-    # Configure AWS
-    # -----------------------------
+    # Configure AWS Credentials
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -60,51 +53,40 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # -----------------------------
-    # Login to ECR
-    # -----------------------------
+    # Login to Amazon ECR
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
 
-    # -----------------------------
     # Build Docker Image
-    # -----------------------------
     - name: Build Docker Image
       run: |
         IMAGE_TAG=$(date +%s)
         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
         docker build -t $ECR_REPOSITORY:$IMAGE_TAG ./board
 
-    # -----------------------------
     # Install Trivy
-    # -----------------------------
     - name: Install Trivy
       run: |
-        sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
         sudo apt-get update
         sudo apt-get install trivy -y
 
-    # -----------------------------
     # Scan Docker Image
-    # -----------------------------
     - name: Scan Docker Image
       run: |
         trivy image --exit-code 0 --severity HIGH,CRITICAL $ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 
-    # -----------------------------
     # Tag Image for ECR
-    # -----------------------------
     - name: Tag Docker Image
       run: |
         docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} \
         $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 
-    # -----------------------------
     # Push Image to ECR
-    # -----------------------------
-    - name: Push Image to ECR
+    - name: Push Docker Image to ECR
       run: |
         docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 
