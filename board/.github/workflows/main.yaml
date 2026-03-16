@@ -68,6 +68,5 @@ jobs:
         echo "LoadBalancer Endpoint:"
         kubectl get svc devops-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'name: CI/CD Pipeline
 
-
     
-   
+  
