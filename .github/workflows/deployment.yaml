@@ -10,7 +10,7 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-  EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}
+  EKS_CLUSTER: ${{ secrets.EKS_CLUSTER }}
 
 jobs:
   build:
@@ -83,7 +83,7 @@ jobs:
       run: |
         aws eks update-kubeconfig \
         --region $AWS_REGION \
-        --name $EKS_CLUSTER_NAME
+        --name $EKS_CLUSTER
 
     - name: Deploy to Kubernetes
       run: |
