@@ -50,19 +50,19 @@ jobs:
 
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
-    - name: Build Docker Image
+
+    - name: Build and Push Docker Image
       run: |
-        IMAGE_TAG=${{ github.sha }}
-        echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          IMAGE_TAG=${{ github.sha }}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY"
-        echo "IMAGE_TAG=$IMAGE_TAG"
-
-        docker buildx build \
-        --platform linux/amd64 \
-        -t $ECR_REPOSITORY:$IMAGE_TAG \
-        -f board/Dockerfile \
-        ./board
+          docker buildx build \
+            --platform linux/amd64 \
+            -t $ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REPOSITORY:latest \
+            -f board/Dockerfile \
+            ./board \
+            --push
  
   
     - name: Install Trivy
