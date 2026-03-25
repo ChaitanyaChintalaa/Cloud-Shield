@@ -12,8 +12,9 @@ spec:
       labels:
         app: hackathon-app
     spec:
-      containers:
+      containers: 
       - name: hackathon-app
-        image: 362324310698.dkr.ecr.us-east-1.amazonaws.com/hackathon-app
+        image: 362324310698.dkr.ecr.us-east-1.amazonaws.com/hackathon-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
