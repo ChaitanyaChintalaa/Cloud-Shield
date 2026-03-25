@@ -63,7 +63,7 @@ jobs:
           -t $ECR_REPOSITORY:$IMAGE_TAG \
           -t $ECR_REPOSITORY:latest \
           -f board/Dockerfile \
-          ./board
+          ./board \
           --push
  
   
