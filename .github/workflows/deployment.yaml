@@ -18,22 +18,26 @@ jobs:
 
     steps:
 
+    # 🔹 Checkout
     - name: Checkout Code
       uses: actions/checkout@v5
 
+    # 🔹 Java Setup
     - name: Setup Java
       uses: actions/setup-java@v5
       with:
         distribution: temurin
         java-version: 17
 
+    # 🔹 Build App
     - name: Build Maven Application
       working-directory: board
       run: |
         chmod +x mvnw
         ./mvnw clean package -DskipTests
 
-    - name: SonarQube Scan (Maven)
+    # 🔹 Sonar Scan
+    - name: SonarQube Scan
       working-directory: board
       run: |
         ./mvnw clean verify sonar:sonar \
@@ -41,6 +45,7 @@ jobs:
         -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
         -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
+    # 🔹 AWS Login
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -48,25 +53,29 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
+    # 🔹 ECR Login
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
-    - name: Build Docker Image
+
+    # 🔹 Build & Push Docker Image (FIXED)
+    - name: Build and Push Docker Image
       run: |
         IMAGE_TAG=${{ github.sha }}
         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY"
-        echo "IMAGE_TAG=$IMAGE_TAG"
+        FULL_IMAGE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY
+
+        echo "Building image: $FULL_IMAGE:$IMAGE_TAG"
 
         docker buildx build \
           --platform linux/amd64 \
-          -t $ECR_REPOSITORY:$IMAGE_TAG \
-          -t $ECR_REPOSITORY:latest \
+          -t $FULL_IMAGE:$IMAGE_TAG \
+          -t $FULL_IMAGE:latest \
           -f board/Dockerfile \
           ./board \
           --push
- 
-  
+
+    # 🔹 Install Trivy
     - name: Install Trivy
       run: |
         sudo apt-get update
@@ -76,31 +85,21 @@ jobs:
         sudo apt-get update
         sudo apt-get install trivy -y
 
+    # 🔹 Scan Image
     - name: Scan Docker Image
       run: |
-        trivy image --severity HIGH,CRITICAL $ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+        FULL_IMAGE=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY
+        trivy image --severity HIGH,CRITICAL $FULL_IMAGE:${{ env.IMAGE_TAG }}
 
-    - name: Tag Docker Image
-      run: |
-        docker tag $ECR_REPOSITORY:${{ env.IMAGE_TAG }} \
-        $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
-
-
-    - name: Push Docker Image
-      run: |
-        docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+    # 🔹 Update kubeconfig
     - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig \
         --region $AWS_REGION \
         --name $EKS_CLUSTER
 
+    # 🔹 Deploy to EKS
     - name: Deploy to Kubernetes
       run: |
         kubectl apply -f board/k8s/deployment.yaml
         kubectl apply -f board/k8s/service.yaml
-
-
-
-        
-        
